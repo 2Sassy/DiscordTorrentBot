@@ -11,14 +11,7 @@ from discord.ext import commands
 def configParserToDict(config_file_location):
     parser = configparser.ConfigParser()
     parser.read(config_file_location)
-    config_dict = {}
-
-    for element in parser.sections():
-        config_dict[element] = {}
-        for name, value in parser.items(element):
-            config_dict[element][name] = value
-
-    return config_dict
+    return {element: dict(parser.items(element)) for element in parser.sections()}
 
 
 client = discord.Client(intents=discord.Intents.all())
@@ -27,10 +20,10 @@ slash = SlashCommand(client, sync_commands=True)
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 
-config = configParserToDict(dir_path + '/discordarr.cfg')
+config = configParserToDict(f'{dir_path}/discordarr.cfg')
 
 parser = configparser.ConfigParser()
-parser.read(dir_path + '/discordarr.cfg')
+parser.read(f'{dir_path}/discordarr.cfg')
 radarr_host_url = parser.get('radarr', 'radarrhosturl')
 radarr_api_key = parser.get('radarr', 'radarrapikey')
 
@@ -71,12 +64,12 @@ async def downloadTV(ctx, show, *args):
         print(show)
         print(args)
         for x in args:
-            show += " " + str(x)
+            show += f" {str(x)}"
 
         print(show)
         tvLookup = sonarr.lookup_series(show)
         print(tvLookup)
-        for tv in tvLookup[0:3]:
+        for tv in tvLookup[:3]:
             try:
                 embed = discord.Embed(title=tv['title'],
                                       colour=discord.Colour(0x00AAFF),
@@ -100,11 +93,11 @@ async def downloadMovie(ctx, show, *args):
     print(ctx.author)
     if ctx.channel.name == "plex-torrents":
         for x in args:
-            show += " " + str(x)
+            show += f" {str(x)}"
 
         movieLookup = radarr.lookup_movie(show)
 
-        for movie in movieLookup[0:3]:
+        for movie in movieLookup[:3]:
             try:
                 embed = discord.Embed(title=movie['folder'],
                                       colour=discord.Colour(0xFFAA00),
@@ -135,7 +128,7 @@ async def download(ctx, show, *args):
     print(content_type)
     if content_type == "movie":
         await downloadMovie(ctx, args[0], args[1:])
-    elif content_type == "tv" or content_type == "tvshow":
+    elif content_type in {"tv", "tvshow"}:
         if str(args[0]).lower() == "show":
             await downloadTV(ctx, args[1], args[2:])
         else:
@@ -153,14 +146,16 @@ async def on_reaction_add(reaction, user):
             print(radarr.add_movie(movieID, 6, Moviepath))
 
             await bot.get_channel(reaction.message.channel.id).send(
-                reaction.message.embeds[0].title + " has been added to the download list")
+                f"{reaction.message.embeds[0].title} has been added to the download list"
+            )
 
         elif content_type == "TVShow":
             tvID = int(reaction.message.embeds[0].footer.text)
 
             print(sonarr.add_series(tvID, 6, TVpath, search_for_missing_episodes=True))
             await bot.get_channel(reaction.message.channel.id).send(
-                reaction.message.embeds[0].title + " has been added to the download list")
+                f"{reaction.message.embeds[0].title} has been added to the download list"
+            )
 
 
 @slash.slash(name='DownloadMovie', description="hi loser")
